@@ -1,0 +1,3 @@
+/Users/mayechi/MAJOR/s-junior/AdvancedDB/CC4OLL/cmake-build-debug/CMakeFiles/linklist.dir
+/Users/mayechi/MAJOR/s-junior/AdvancedDB/CC4OLL/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/mayechi/MAJOR/s-junior/AdvancedDB/CC4OLL/cmake-build-debug/CMakeFiles/rebuild_cache.dir

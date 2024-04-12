@@ -3,6 +3,7 @@
 #include <vector>
 #include <mutex>
 #include <pthread.h>
+#include <cassert>
 
 using namespace std;
 
@@ -18,23 +19,91 @@ void Add(int data, Node *head) {
     // TODO 加锁的插入操作
     // 空指针不能加锁 记得异常处理
     // 分三种情况判断：已经存在、已经位于队尾、正常插入（位于队中）
+    assert(head);
+    head->mutex_.lock();
+    if (head->next_) head->next_->mutex_.lock();
+    Node *pre = head;   // must not equal nullptr
+    Node *next = head->next_;
+    while (next && next->data_ < data) {
+        pre->mutex_.unlock();
+        if (next->next_) next->next_->mutex_.lock();
+        pre = next;
+        next = next->next_;
+    }
+    Node *node = new Node(data);
+    pre->next_ = node;
+    node->next_ = next;
+    pre->mutex_.unlock();
+    if (next) next->mutex_.unlock();
 }
 
 void Add_nolock(int data, Node *head) {
     // TODO 不加锁的插入操作
+    assert(head);
+    Node *pre = head;   // must not equal nullptr
+    Node *next = head->next_;
+    // find position
+    while (next && next->data_ > data) {
+        pre = next;
+        next = next->next_;
+    }
+    Node *node = new Node(data);
+    pre->next_ = node;
+    node->next_ = next;
 }
 
 void Contain(int data, Node *head) {
     // TODO 查找列表中是否含有该数据
+    assert(head);
+    head->mutex_.lock(); // tutor said that head should be locked, so be it...
+    Node *cur = head->next_;
+//    if (cur) cur->mutex_.lock();
+    while (cur && cur->data_ != data) {
+//        cur->mutex_.unlock();
+        cur = cur->next_;
+//        cur->mutex_.lock();
+    }
+    head->mutex_.unlock();
 }
 
 void Remove(int data, Node *head) {
     // TODO 移除列表中特定数据
+    assert(head);
+    head->mutex_.lock();
+    if (head->next_) head->next_->mutex_.lock();
+    if (head->next_->next_) head->next_->next_->mutex_.lock();
+    Node *pre = head;   // must not equal nullptr
+    Node *cur = head->next_;
+    Node *next = (cur) ? cur->next_ : nullptr;
+    while (cur && cur->data_ != data) {
+        pre->mutex_.unlock();
+        if (next && next->next_) next->next_->mutex_.lock();
+        pre = cur;
+        cur = cur->next_;
+        if (next && next->next_) next = next->next_;
+    }
+    if (!cur) {     // data not found
+        pre->mutex_.unlock();
+        return ;
+    }
+    pre->next_ = next;
+    pre->mutex_.unlock();
+    if (next) next->mutex_.unlock();
+    delete cur;
 }
 
 void Print(Node *head) {
     // TODO  遍历打印
     // 只需要锁头节点
+    assert(head);
+    head->mutex_.lock();
+    Node *cur = head->next_;
+    while (cur) {
+        printf("%d ", cur->data_);
+        cur = cur->next_;
+    }
+    printf("\n");
+    head->mutex_.unlock();
 }
 
 int main() {
