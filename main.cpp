@@ -7,6 +7,7 @@
 
 using namespace std;
 
+
 struct Node {
     int data_;
     Node *next_;
@@ -20,21 +21,27 @@ void Add(int data, Node *head) {
     // 空指针不能加锁 记得异常处理
     // 分三种情况判断：已经存在、已经位于队尾、正常插入（位于队中）
     assert(head);
-    head->mutex_.lock();
-    if (head->next_) head->next_->mutex_.lock();
+    try {
+        head->mutex_.lock();
+        if (head->next_) head->next_->mutex_.lock();
+    } catch (const std::system_error& e) {}
     Node *pre = head;   // must not equal nullptr
     Node *next = head->next_;
     while (next && next->data_ < data) {
-        pre->mutex_.unlock();
-        if (next->next_) next->next_->mutex_.lock();
+        try {
+            pre->mutex_.unlock();
+            if (next->next_) next->next_->mutex_.lock();
+        } catch (const std::system_error& e) {}
         pre = next;
         next = next->next_;
     }
     Node *node = new Node(data);
     pre->next_ = node;
     node->next_ = next;
-    pre->mutex_.unlock();
-    if (next) next->mutex_.unlock();
+    try {
+        pre->mutex_.unlock();
+        if (next) next->mutex_.unlock();
+    } catch (const std::system_error& e) {}
 }
 
 void Add_nolock(int data, Node *head) {
@@ -69,26 +76,34 @@ void Contain(int data, Node *head) {
 void Remove(int data, Node *head) {
     // TODO 移除列表中特定数据
     assert(head);
-    head->mutex_.lock();
-    if (head->next_) head->next_->mutex_.lock();
-    if (head->next_->next_) head->next_->next_->mutex_.lock();
+    try {
+        head->mutex_.lock();
+        if (head->next_) head->next_->mutex_.lock();
+        if (head->next_->next_) head->next_->next_->mutex_.lock();
+    } catch (const std::system_error& e) {}
     Node *pre = head;   // must not equal nullptr
     Node *cur = head->next_;
     Node *next = (cur) ? cur->next_ : nullptr;
     while (cur && cur->data_ != data) {
-        pre->mutex_.unlock();
-        if (next && next->next_) next->next_->mutex_.lock();
+        try {
+            pre->mutex_.unlock();
+            if (next && next->next_) next->next_->mutex_.lock();
+        } catch (const std::system_error& e) {}
         pre = cur;
         cur = cur->next_;
-        if (next && next->next_) next = next->next_;
+        if (next) next = next->next_;
     }
     if (!cur) {     // data not found
-        pre->mutex_.unlock();
+        try {
+            pre->mutex_.unlock();
+        } catch (const std::system_error& e) {}
         return ;
     }
     pre->next_ = next;
-    pre->mutex_.unlock();
-    if (next) next->mutex_.unlock();
+    try {
+        pre->mutex_.unlock();
+        if (next) next->mutex_.unlock();
+    } catch (const std::system_error& e) {}
     delete cur;
 }
 
@@ -136,7 +151,9 @@ int main() {
         addthreads.emplace_back(Add, i, head);
     for (auto &thread1 : addthreads)
         thread1.join();
+
     Print(head);
+
     vector<thread> addremthreads;
     for (int i = 0; i < 100; i = i + 2) {
         addremthreads.emplace_back(Add, i+1, head);
@@ -144,7 +161,9 @@ int main() {
     }
     for (auto &thread3 : addremthreads)
         thread3.join();
+
     Print(head);
+
     // Test case 4
 //    vector<thread> addthreads;
 //    for (int i = 0; i < 100; i++)
@@ -161,5 +180,6 @@ int main() {
 //        thread4.join();
 //    Print(head);
     delete head;
+
     return 0;
 }
